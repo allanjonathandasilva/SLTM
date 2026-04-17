@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-%% Sensitivity Table: Impact of theta0 across varying model parameters (s, v, kappa)
+%% Sensitivity Table C4: Impact of theta0 across varying model parameters (s, v, kappa)
 
 % Initial conditions
 r0      = 0.149;     % Initial short rate
@@ -43,7 +43,7 @@ for s = s_values
     end
 end
 
-%% Characteristic function for the stochastic long-term mean model (legacy version)
+%% ChF - Sec 3.3, thm 1
 function phi_RT = compute_characteristic_function2_old(u, T, r0, theta0, k, s, v, m)
     q = 1i * u;
     t = T; z = T;
@@ -67,10 +67,9 @@ function phi_RT = compute_characteristic_function2_old(u, T, r0, theta0, k, s, v
     phi_RT = exp(A + B1 * r0 + B2 * theta0);
 end
 
-%% Updated closed-form characteristic function for x(t) = ∫₀^t r(s) ds
+%% ChF - Sec 3.3, thm 1
 function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
-    % Computes the closed-form characteristic function of x(t) = ∫₀^t r(s) ds
-    % for a short-rate model with stochastic long-term mean theta(t)
+    % Closed-form ChF for accumulated stochastic interest rate
     % Inputs:
     %   u       - Complex argument (typically 1i * real frequency)
     %   t       - Maturity time
@@ -83,21 +82,21 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
     % Output:
     %   phi_RT  - Characteristic function evaluated at u
 
-    q = 1i * u;
+    q = 1i * u;  % ChF argument (iu)
 
-    % Affine coefficient beta_1
+    % Coefficient beta_1 Eq. 30
     beta1 = (q - q * exp(-k * t)) / k;
 
-    % Affine coefficient beta_2
+    % Coefficient beta_2 Eq. 31
     beta2 = (q * (k - v + v * exp(-k * t))) / (v * (k - v)) ...
             - (k * q * exp(-v * t)) / (v * (k - v));
 
-    % Drift part alpha (from analytical derivation)
+    % Coefficient alpha 
     term1 = (k * m * q * t) / (k - v) - (m * q * v * t) / (k - v);
     term2 = - (m * q * v * (exp(-k * t) - 1)) / (k * (k - v));
     term3 = (k * m * q * (exp(-v * t) - 1)) / (v * (k - v));
 
-    % Second-order volatility correction term (s² q² × complex polynomial)
+    
     q2 = q^2;
     num_s = ...
         (q2 * (3 * k^4 - 4 * k^4 * exp(-v * t) + k^4 * exp(-2 * v * t))) / 2 ...
@@ -109,9 +108,10 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
 
     denom_s = 2 * k * v^3 * (k + v) * (k - v)^2;
 
+    % Solution of Eq. 27 given by Eq. 32
     alpha = term1 + term2 + term3 - (s^2 * num_s) / denom_s;
 
-    % Complete characteristic function
+    % ChF expression - Solution of Eqs. 27, 28 and 29
     phi = alpha + beta1 * r0 + beta2 * theta0;
 
     % Overflow protection
@@ -119,7 +119,8 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
         phi_RT = NaN;
         return;
     end
-
+    
+    % Eq. 26
     phi_RT = exp(phi);
 
     if ~isfinite(phi_RT) || real(phi_RT) <= 0

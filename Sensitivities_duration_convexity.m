@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-%% Table 3: Yield, Duration, and Convexity under a Stochastic Mean-Reverting Model
+%% Table C3: Yield, Duration, and Convexity under a Stochastic Mean-Reverting Model
 
 % Model parameters
 r0      = 0.149;     % Initial short rate
@@ -42,12 +42,8 @@ for i = 1:length(mkttimes)
     fprintf('%10.2f | %12.4f %12.4f %12.4f\n', T, 100 * Y, D, C);
 end
 
-%% Closed-form characteristic function: ∫₀^t r(s) ds under stochastic mean model
+%% %% ChF - Sec 3.3, thm 1
 function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
-    % Computes the closed-form characteristic function of the integrated short rate
-    % x(t) = ∫₀^t r(s) ds, under the model:
-    %   dr(t)     = k*(theta(t) - r(t)) dt
-    %   dtheta(t) = v*(m - theta(t)) dt + s*dW(t)
     % Input:
     %   u       - Complex argument for characteristic function (usually 1i*frequency)
     %   t       - Time to maturity
@@ -62,19 +58,21 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
 
     q = 1i * u;  % Fourier variable
 
+    % Coefficient beta_1 Eq. 30
     % Affine coefficient beta_1
     beta1 = (q - q * exp(-k * t)) / k;
 
+    % Coefficient beta_2 Eq. 31
     % Affine coefficient beta_2
     beta2 = (q * (k - v + v * exp(-k * t))) / (v * (k - v)) ...
             - (k * q * exp(-v * t)) / (v * (k - v));
 
-    % Drift component (alpha) as derived from analytical expansion
+    % Coefficient alpha 
     term1 = (k * m * q * t) / (k - v) - (m * q * v * t) / (k - v);
     term2 = - (m * q * v * (exp(-k * t) - 1)) / (k * (k - v));
     term3 = (k * m * q * (exp(-v * t) - 1)) / (v * (k - v));
 
-    % Second-order correction due to stochastic volatility (s^2 q^2 term)
+    % Complex term involving s^2 * q^2 * (...)
     q2 = q^2;
     num_s = ...
         (q2 * (3 * k^4 - 4 * k^4 * exp(-v * t) + k^4 * exp(-2 * v * t))) / 2 ...
@@ -85,9 +83,10 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
       - (q2 * v^4 * (4 * exp(-k * t) - exp(-2 * k * t) + 2 * k * t - 3)) / 2;
 
     denom_s = 2 * k * v^3 * (k + v) * (k - v)^2;
-
+    % Solution of Eq. 27 given by Eq. 32
     alpha = term1 + term2 + term3 - (s^2 * num_s) / denom_s;
 
+    % ChF expression - Solution of Eqs. 27, 28 and 29
     % Full characteristic exponent
     phi = alpha + beta1 * r0 + beta2 * theta0;
 
@@ -95,7 +94,8 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
     if abs(real(phi)) > 700
         phi_RT = NaN; return;
     end
-
+    
+    % Eq. 26
     phi_RT = exp(phi);
 
     if ~isfinite(phi_RT) || real(phi_RT) <= 0

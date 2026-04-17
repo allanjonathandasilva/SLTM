@@ -1,4 +1,9 @@
-%% Calibration of interest rate models using Treasury .csv data
+%% Calibration of interest rate SLTM model using Treasury .csv data
+%% DOI: 10.1002/asmb.70097
+%% Article: A Short-Rate Model with Stochastic Long-Term Mean and Volterra-Type Memory: Risk Implications for Bonds and Option Pricing
+%% Journal: Applied Stochastic Models in Business and Industry
+%% Author: Allan Jonathan da Silva
+
 clear; clc; close all;
 
 % === Reading the CSV file ===
@@ -210,10 +215,10 @@ fclose(fileID2);
 
 
 %%
-
+%% ChF - Sec 3.3, thm 1
 function val = safe_exp_characteristic(params, t)
     % safe_exp_characteristic — Evaluates the price of a zero-coupon bond under the
-    % stochastic mean model, with robustness checks and handling of the degenerate case k ≈ v.
+    % stochastic mean model, with robustness checks and handling of the degenerate case (|k - v| < eps).
 
     try
         % Extract parameters from the input vector
@@ -246,7 +251,7 @@ function val = safe_exp_characteristic(params, t)
             return;
         end
 
-        % Bond price derived from the characteristic function (real part)
+        % Bond price derived from the ChF (real part)
         val = real(phi);
 
     catch
@@ -255,22 +260,21 @@ function val = safe_exp_characteristic(params, t)
     end
 end
 
-%%
+%% ChF - Sec 3.3, thm 1
 function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
-    % Closed-form characteristic function for R_T = ∫₀^t r(s) ds
-    % Based on the provided analytical formulas
-    % u: evaluation point (typically real positive for Laplace or imaginary for Fourier transform)
+    % Closed-form ChF for accumulated stochastic interest rate
+    % u: evaluation point
 
-    q = 1i * u;  % Characteristic function argument (iu)
+    q = 1i * u;  % ChF argument (iu)
 
-    % Coefficient beta_1
+    % Coefficient beta_1 Eq. 30
     beta1 = (q - q * exp(-k * t)) / k;
 
-    % Coefficient beta_2
+    % Coefficient beta_2 Eq. 31
     beta2 = (q * (k - v + v * exp(-k * t))) / (v * (k - v)) ...
             - (k * q * exp(-t * v)) / (v * (k - v));
 
-    % Coefficient alpha (symbolically reorganized formula)
+    % Coefficient alpha 
     term1 = (k * m * q * t) / (k - v) - (m * q * v * t) / (k - v);
     term2 = - (m * q * v * (exp(-k * t) - 1)) / (k * (k - v));
     term3 = (k * m * q * (exp(-v * t) - 1)) / (v * (k - v));
@@ -286,10 +290,11 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
       - (q2 * v^4 * (4 * exp(-k * t) - exp(-2 * k * t) + 2 * k * t - 3)) / 2;
 
     denom_s = 2 * k * v^3 * (k + v) * (k - v)^2;
-
+    
+    % Solution of Eq. 27 given by Eq. 32
     alpha = term1 + term2 + term3 - (s^2 * num_s) / denom_s;
 
-    % Characteristic function expression
+    % ChF expression - Solution of Eqs. 27, 28 and 29
     phi = alpha + beta1 * r0 + beta2 * theta0;
 
     % Overflow protection
@@ -297,6 +302,7 @@ function phi_RT = compute_characteristic_function2(u, t, r0, theta0, k, s, v, m)
         phi_RT = NaN; return;
     end
 
+    % Eq. 26
     phi_RT = exp(phi);
 
     % Final numerical stability check
